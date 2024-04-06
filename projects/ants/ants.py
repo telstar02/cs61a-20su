@@ -53,6 +53,7 @@ class Insect:
 
     damage = 0
     # ADD CLASS ATTRIBUTES HERE
+    is_watersafe = False
 
     def __init__(self, armor, place=None):
         """Create an Insect with an ARMOR amount and a starting PLACE."""
@@ -107,6 +108,7 @@ class Ant(Insect):
     food_cost = 0
     # ADD CLASS ATTRIBUTES HERE
     blocks_path = True
+    buffed = False
 
     def __init__(self, armor=1):
         """Create an Ant with an ARMOR quantity."""
@@ -454,14 +456,26 @@ class Water(Place):
         its armor to 0."""
         # BEGIN Problem 11
         "*** YOUR CODE HERE ***"
+        Place.add_insect(self, insect)
+        #print("DEBUG:is_watersafe",insect.is_watersafe)
+        if insect.is_watersafe is False :
+            #print("DEBUG:water safe")
+            insect.reduce_armor(insect.armor)
         # END Problem 11
 
 # BEGIN Problem 12
 # The ScubaThrower class
+class ScubaThrower(ThrowerAnt):
+    implemented = True
+    name = 'Scuba'
+    food_cost = 6
+    armor = 1
+    is_watersafe = True
+
 # END Problem 12
 
 # BEGIN Problem 13
-class QueenAnt(Ant):  # You should change this line
+class QueenAnt(ScubaThrower):  # You should change this line
 # END Problem 13
     """The Queen of the colony. The game is over if a bee enters her place."""
 
@@ -469,12 +483,17 @@ class QueenAnt(Ant):  # You should change this line
     food_cost = 7
     # OVERRIDE CLASS ATTRIBUTES HERE
     # BEGIN Problem 13
-    implemented = False   # Change to True to view in the GUI
+    the_chosen_one = None
+    implemented = True   # Change to True to view in the GUI
     # END Problem 13
 
     def __init__(self, armor=1):
         # BEGIN Problem 13
+        ScubaThrower.__init__(self, armor)
         "*** YOUR CODE HERE ***"
+        if QueenAnt.the_chosen_one is None:
+            QueenAnt.the_chosen_one = self
+            
         # END Problem 13
 
     def action(self, gamestate):
@@ -485,6 +504,29 @@ class QueenAnt(Ant):  # You should change this line
         """
         # BEGIN Problem 13
         "*** YOUR CODE HERE ***"
+        # checking if it's the first one
+        if self is not QueenAnt.the_chosen_one:
+            print("DEBUG:fake one")
+            self.reduce_armor(self.armor)
+        else:
+            # action
+            #print("DEBUG:take action")
+            ScubaThrower.action(self, gamestate)
+            pos = self.place.exit
+            while pos.exit:
+                if pos.ant:
+                    #print('DEBUG:pos.ant',pos.ant)
+                    #print('DEBUG:hasattr',hasattr(pos.ant, 'damage'))
+                    if not pos.ant.buffed:
+                        print('DEBUG:pos.ant.demage',pos.ant)
+                        pos.ant.damage *= 2
+                        pos.ant.buffed = True
+                    if isinstance(pos.ant, ContainerAnt) is True and pos.ant.contained_ant is not None: 
+                        if not pos.ant.contained_ant.buffed:
+                            pos.ant.contained_ant.damage *= 2
+                            pos.ant.contained_ant.buffed = True
+                
+                pos = pos.exit
         # END Problem 13
 
     def reduce_armor(self, amount):
@@ -493,8 +535,15 @@ class QueenAnt(Ant):  # You should change this line
         """
         # BEGIN Problem 13
         "*** YOUR CODE HERE ***"
+        Insect.reduce_armor(self, amount) 
+        if self.armor == 0 and QueenAnt.the_chosen_one is self:
+            bees_win()
         # END Problem 13
-
+    def remove_from(self, place):
+        if QueenAnt.the_chosen_one is self:
+            return
+        else:
+            super().remove_from(place)
 
 
 class AntRemover(Ant):
@@ -512,7 +561,7 @@ class Bee(Insect):
     name = 'Bee'
     damage = 1
     # OVERRIDE CLASS ATTRIBUTES HERE
-
+    is_watersafe = True
 
     def sting(self, ant):
         """Attack an ANT, reducing its armor by 1."""
